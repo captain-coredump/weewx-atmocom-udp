@@ -1,0 +1,25 @@
+1.00  2019-02-16 by Arthur Emerson, vreihen@yahoo.com
+
+* Initial push to GitHub for public access/review.
+
+* Added "wee_config --reconfigure" support, to simplify installation/configuration.
+
+
+0.12  2019-02-12 by Arthur Emerson, vreihen@yahoo.com
+
+* Added check to cowardly refuse to start up if sensor_map is missing from weewx.conf.
+
+* Added Ambient Weather URL parsing, in addition to Weather Underground URL posts.
+
+* Will now flag unknown/corrupt UDP packets, and skip missing observation fields if defined in sensor_map but not in received packet.
+
+
+0.10  2019-02-05 by Arthur Emerson, vreihen@yahoo.com
+
+* Initial release
+
+* Fork of my weatherflow-udp driver v1.03.
+
+* Developed without having the actual hardware present, and no public API documentation available.
+
+

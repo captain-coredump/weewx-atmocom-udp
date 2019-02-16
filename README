@@ -1,0 +1,214 @@
+weewx-atmocom-udp
+Copyright 2017-2019 Arthur Emerson, vreihen@yahoo.com
+Distributed under terms of the GPLv3
+
+This is a driver for weewx, that captures data from the Atmocom interceptor
+via the interceptor's UDP broadcasts on the local subnet.
+
+http://www.atmocom.com
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Installation:
+
+I believe that I have correctly followed the instructions provided by weewx
+in order to provide the complete weewx extension package layout here.
+
+https://github.com/weewx/weewx/wiki/extensions#how-to-install-an-extension
+
+1) Starting with a fresh weewx installation, choose the "Simulator" station
+   driver during the package install process.
+
+2) Next, grab a .ZIP download of this entire project from the GitHub web
+   interface:
+
+   wget -O weewx-atmocom-udp-master.zip https://github.com/captain-coredump/weewx-atmocom-udp/archive/master.zip
+
+3) Install the driver package by running this command:
+
+   wee_extension --install weewx-atmocom-udp-master.zip
+
+4) Configure weewx and this AtmocomUDP driver (including building an initial
+   sensor_map for most simple implementations):
+
+   wee_config --reconfigure
+
+For most simple installations, you should be able to stop/start weewx and
+everything from the station driver perspective should just work.  For complex
+installations or troubleshooting, continue reading the next section for how
+to edit weewx.conf and what each setting does.
+
+Worst case, a manual install is simple enough.  At least on my Raspberry Pi,
+copy atmocomudp.py from bin/user to /usr/share/weewx/user/atmocomudp.py,
+and then edit /etc/weewx/weewx.conf and add the new station driver settings
+per the info below.
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Description:
+
+This driver detects different URL-encoded packets broadcast using the Atmocom
+UDP protocol, and it includes a mechanism to filter the incoming data and map
+the filtered data onto the weewx database schema and identify the type of data
+from each sensor.
+
+This driver detects different station packets broadcast using the Atmocom
+UDP protocol, and it includes a mechanism to filter the incoming data
+and map the filtered data onto the weewx database schema. 
+
+Observations are filtered based on a key that identifies uniquely each
+sensor/station.  A key consists of the URL's variable name and the
+Weather Underground Station ID, separated by periods:
+
+  <variable_name>.<WUStationID>
+
+Note: For Ambient Weather observation packets, use your Ambient Weather Key
+as the unique identifier:
+
+  <variable_name>.<Ambient_Key>
+
+The filter and data types are specified in a sensor_map stanza in the driver
+stanza.  For example:
+
+[AtmocomUDP]
+    driver = user.atmocomudp
+    log_raw_packets = False
+    udp_address = <broadcast>
+    # udp_address = 0.0.0.0
+    # udp_address = 255.255.255.255
+    udp_port = 12000
+    udp_timeout = 90
+    share_socket = True
+    station_units = weewx.US
+
+    [[sensor_map]]
+        outTemp = tempf.WUStationID
+        outHumidity = humidity.WUStationID
+        inTemp = indoortempf.WUStationID
+        inHumidity = indoorhumidity.WUStationID
+        pressure = absbaromin.WUStationID
+        windDir = winddir.WUStationID
+        windSpeed = windspeedmph.WUStationID
+        windGust = windgustmph.WUStationID
+        UV = UV.WUStationID
+        rain = rainin.WUStationID
+        radiation = solarradiation.WUStationID
+
+==> IF NO sensor_map IS SPECIFIED, NO DATA WILL BE COLLECTED! <==
+
+To identify sensors, use the option 'log_raw_packets = True' to
+output all raw received packets into syslog where you can examine
+what is being sent.  Make sure to set 'log_raw_packets = False'
+when done, since it will generate a LOT of syslog entries over
+time.
+
+To identify the various observation_name options, start weewx
+with this station driver installed and it will write the
+entire matrix of available observation_names and sensor_types
+to syslog (or wherever weewx is configured to send log info).
+
+Options:
+
+    log_raw_packets = False
+
+    Enable writing all raw UDP packets received to syslog,
+    (or wherever weewx is configured to send log info).  Will
+    fill up your logs pretty quickly, so only use it as
+    a debugging tool or to identify sensors.
+     
+    udp_address = <broadcast>
+    # udp_address = 0.0.0.0
+    # udp_address = 255.255.255.255
+
+    This is the broadcast address that we should be listening
+    on for packets.  If the driver throws an error on start,
+    try one of the other commented-out options (in order).
+    This seems to be platform-specific.  All three work on
+    Debian Linux and my Raspberry Pi, but only 0.0.0.0 works
+    on my Macbook running OS-X or MacOS.  Don't ask about
+    Windows, since I don't have a test platform to see
+    if it will even work.
+
+    udp_port = 12000
+
+    The IP port that we should be listening for UDP packets
+    from.  Atmocom's default is 12000.
+
+    udp_timeout = 90
+
+    The number of seconds that we should wait for an incoming
+    packet on the UDP socket before we give up and log an
+    error into syslog.  I cannot determine whether or not
+    weewx cares whether a station driver is non-blocking or
+    blocking, but encountered a situation in testing the
+    WeatherFlow driver that this is based on where the Hub
+    rebooted for a firmware update and it caused the driver to
+    throw a timeout error and exit.  I have no idea what the
+    default timeout value even is, but decided to make it
+    configurable in case it is important to someone else.  My
+    default of 90 seconds seems reasonable, with most PWS devices
+    sending Weather Underground "rapid fire" observations every
+    15-60 seconds.  If you are an old-school programmer like me
+    who thinks that computers should wait forever until they
+    receive data, the Python value "None" should disable the
+    timeout.  In any case, the driver will just log an error
+    into syslog and keep on processing.  It isn't like it is
+    the end of the world if you pick a wrong value, but you may
+    have a better chance of missing packets during the brief
+    error trapping time with a really short duration.
+
+    share_socket = True
+
+    Whether or not the UDP socket should be shared with other
+    local programs also listening for Atmocom UDP packets.  Default
+    is True with some hesitation, because I suspect that some obscure
+    Python implementation will have problems sharing the socket.  Feel
+    free to set it to False if it creates any problems on your platform.
+
+    station_units = weewx.METRICWX
+    
+    Specify what measurement units are being used by the attached station.
+    Weather Underground apparently *only* accepts input in imperial units,
+    but other intercepted services may send metric units.  This setting
+    just tells weewx what units you are sending...your sensor_map entries
+    (defined later) will need to handle the actual mapping of the URL-encoded
+    variable names to weewx database field names.
+
+    Set to weewx.US by default, with a footnote that I'm a US citizen where
+    metric is still treated as a dirty word, and apologize to the world for
+    WU apparently not having any metric upload options.
+
+    References:  http://www.weewx.com/docs/customizing.htm#units
+    https://web.archive.org/web/20130430065507/http://wiki.wunderground.com/index.php/PWS_-_Upload_Protocol
+    weewx.METRICWX = mm+m/s\nweewx.METRIC = cm+km/hr\nweewx.US = in/mph
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Credits:
+
+Thank you to Matthew Wall for the sensor_map naming concept that I borrowed
+from his weewx-SDR station driver code: 
+
+https://github.com/matthewwall/weewx-sdr
+
+I guess that I should also thank David St. John and the "dream team" at
+WeatherFlow for all of the hard work and forethought that they put into
+making their weather station a reality.  I can't sing enough praises for
+whoever at WeatherFlow came up with the idea to send observation packets
+out live via UDP broadcasts, and think that they should be nominated for
+a Nobel Prize or something.  This Atmocom station driver is based on the
+one that I developed for the WeatherFlow hardware and UDP broadcasts, and
+owes its existence to their vision in pioneering the UDP broadcasts of
+PWS data.
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Finally:
+
+This is the part where I am supposed to put in a PayPal link and ask for
+donations if you find this code useful.  Since I am financially solvent (and
+would starve to death if I had to make a living as a programmer), :-)  I would
+like to encourage anyone reading this to make a small donation to a local
+not-for-profit school, hospital, animal shelter, or other charity of your
+choice who appreciates philanthropic support.  
+

@@ -1,0 +1,17 @@
+
+2019-02-05:
+
+* Need to implement other packet formats intercepted/forwarded by the Atmocom device, such as per-minute Ambient Weather updates.
+  (Note: Ambient Weather packets now parsed as of 2019-02-12.)
+
+* Only tested against one Ambient Weather station model.  Need to get feedback if there are differences between models.
+
+* Need to test against non-Ambient Weather stations utilizing the Atmocom device.
+
+2019-02-16:
+
+* Running "wee_config --reconfigure" with weewx.METRIC or weewx.METRICWX options will build a bugus example
+  sensor_map, since as far as I can determine Weather Underground only accepts imperial units.
+
+* Need to add support for WU option dateutc=now , which lets WU assign the current time for stations without a clock.
+

@@ -22,7 +22,7 @@ import datetime
 import urlparse
 
 # Default settings...
-DRIVER_VERSION = "1.00"
+DRIVER_VERSION = "1.10"
 HARDWARE_NAME = "Atmocom-UDP"
 DRIVER_NAME = 'AtmocomUDP'
 
@@ -184,8 +184,13 @@ class AtmocomUDPDriver(weewx.drivers.AbstractDevice):
 
             obs=dict(urlparse.parse_qsl(message.decode("utf-8")))
 
-            obs_time = datetime.datetime.strptime(obs['dateutc'],"%Y-%m-%d %H:%M:%S")
+            # Handle utcdate=now packets, from stations without clocks
+            if obs['dateutc'].lower() == 'now':
+                obs_time = datetime.datetime.utcnow()
+            else:
+                obs_time = datetime.datetime.strptime(obs['dateutc'],"%Y-%m-%d %H:%M:%S")
             time_epoch = int((obs_time-datetime.datetime(1970,1,1)).total_seconds())
+
             if obs_type == "WU":
                 obs_label = obs['ID']
             if obs_type == "Ambient":

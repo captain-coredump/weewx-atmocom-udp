@@ -1,3 +1,10 @@
+1.10  2019-02-22 by Arthur Emerson, vreihen@yahoo.com
+
+* Added support for dateutc=now in WU packets, to handle stations that do not have on-board clocks and send "now" per the WU protocol.
+
+* Updated TODO to reflect known issue with rain measurements.  Need to add rain-delta code, since rainin contains some sort of hourly total and not only the rain measured since the last packet.  Look for a quick v1.20 in the next day or so.
+
+
 1.00  2019-02-16 by Arthur Emerson, vreihen@yahoo.com
 
 * Initial push to GitHub for public access/review.

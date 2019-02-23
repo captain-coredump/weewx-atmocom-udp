@@ -10,7 +10,7 @@ def loader():
 class AtmocomUDPInstaller(ExtensionInstaller):
     def __init__(self):
         super(AtmocomUDPInstaller, self).__init__(
-            version="1.0",
+            version="1.10",
             name='atmocomudp',
             description='Capture data from Atmocom interceptor via UDP broadcast packets of Weather Underground updates',
             author="Arthur Emerson",

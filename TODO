@@ -1,6 +1,6 @@
 2019-02-22:
 
-* Need to add rain-delta code, since rainin contains some sort of hourly total and not only the rain measured since the last packet.
+* DONE!!!  Need to add rain-delta code, since rainin contains some sort of hourly total and not only the rain measured since the last packet.
 
 
 2019-02-05:
@@ -15,7 +15,7 @@
 
 2019-02-16:
 
-* Running "wee_config --reconfigure" with weewx.METRIC or weewx.METRICWX options will build a bugus example
+* Running "wee_config --reconfigure" with weewx.METRIC or weewx.METRICWX options will build a bogus example
   sensor_map, since as far as I can determine Weather Underground only accepts imperial units.
 
 * DONE!!!  Need to add support for WU option dateutc=now , which lets WU assign the current time for stations without a clock.

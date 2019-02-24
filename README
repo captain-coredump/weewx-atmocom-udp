@@ -91,7 +91,7 @@ stanza.  For example:
         windSpeed = windspeedmph.WUStationID
         windGust = windgustmph.WUStationID
         UV = UV.WUStationID
-        rain = rainin.WUStationID
+        rain = rainindelta.WUStationID
         radiation = solarradiation.WUStationID
 
 ==> IF NO sensor_map IS SPECIFIED, NO DATA WILL BE COLLECTED! <==
@@ -102,10 +102,6 @@ what is being sent.  Make sure to set 'log_raw_packets = False'
 when done, since it will generate a LOT of syslog entries over
 time.
 
-To identify the various observation_name options, start weewx
-with this station driver installed and it will write the
-entire matrix of available observation_names and sensor_types
-to syslog (or wherever weewx is configured to send log info).
 
 Options:
 
@@ -181,6 +177,53 @@ Options:
     References:  http://www.weewx.com/docs/customizing.htm#units
     https://web.archive.org/web/20130430065507/http://wiki.wunderground.com/index.php/PWS_-_Upload_Protocol
     weewx.METRICWX = mm+m/s\nweewx.METRIC = cm+km/hr\nweewx.US = in/mph
+
+Rain Delta Calculations:
+
+    Weewx likes its "rain" value passed from station drivers to be the amount
+    of rain counted since the last LOOP packet was received.  
+
+    Weather Underground (and clones) receives one or more rainfall totals,
+    based on fixed time periods:
+
+       rainin
+       dailyrainin
+       weeklyrainin
+       monthlyrainin
+       yearlyrainin
+
+   While one would hope that "rainin" would be the total since the last packet
+   (like weewx needs), we would not be so lucky.  There is actually conflicting
+   information on the web, with some saying that "rainin" is the rain total
+   for the past hour and others saying that it is rain total for the last 60
+   minutes.  Yes, there are 60 minutes in an hour, but saying it is the last
+   60 minutes implies a sliding time window...and not from when the big hand
+   is on the 12 until it returns to the 12.  If that's not confusing enough,
+   the Weather Underground protocol also allows for specifying observation
+   time as "now" for stations without a clock.  I'm going to stop here, and
+   take some aspirin to numb the headache I'm getting just thinking about
+   how the station knows when a day/month/year starts with no clock.
+
+   To give a no-code option for everyone, I have parsed every single rain
+   figure into separate delta variables in the returned LOOP packet:
+
+       rainindelta
+       dailyrainindelta
+       weeklyrainindelta
+       monthlyrainindelta
+       yearlyrainindelta
+
+   The default sensor_map entry is created as follows:
+
+      rain = rainindelta.WUStationID
+
+   Because of the sliding time window ambiguity with rainin, I strongly
+   suggest editing weewx.conf and mapping rain to yearlyrainindelta or
+   whatever is the longest time period observation your station is sending.
+   I would really, really, really like to set the default as yearlyrainindelta,
+   but fear that there is a station out there without a clock that does not
+   send anything but rainin...and hopefully not as a sliding 60-minute
+   time window!
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 

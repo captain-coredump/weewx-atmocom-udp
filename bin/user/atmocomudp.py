@@ -22,7 +22,7 @@ import datetime
 import urlparse
 
 # Default settings...
-DRIVER_VERSION = "1.10"
+DRIVER_VERSION = "1.20"
 HARDWARE_NAME = "Atmocom-UDP"
 DRIVER_NAME = 'AtmocomUDP'
 
@@ -68,7 +68,7 @@ class AtmocomUDPConfEditor(weewx.drivers.AbstractConfEditor):
         windSpeed = windspeedmph.WUStationID
         windGust = windgustmph.WUStationID
         UV = UV.WUStationID
-        rain = rainin.WUStationID
+        rain = rainindelta.WUStationID
         radiation = solarradiation.WUStationID
 """
 
@@ -145,9 +145,9 @@ class AtmocomUDPConfEditor(weewx.drivers.AbstractConfEditor):
         print "\nBuilding default sensor_map...\n"
 
         if settings['station_units'] == 'weewx.US':
-            wu_sensors = { 'outTemp': 'tempf', 'outHumidity': 'humidity', 'inTemp': 'indoortempf', 'inHumidity': 'indoorhumidity', 'pressure': 'absbaromin', 'windDir': 'winddir', 'windSpeed': 'windspeedmph', 'windGust': 'windgustmph', 'UV': 'UV', 'rain': 'rainin', 'radiation': 'solarradiation' }
+            wu_sensors = { 'outTemp': 'tempf', 'outHumidity': 'humidity', 'inTemp': 'indoortempf', 'inHumidity': 'indoorhumidity', 'pressure': 'absbaromin', 'windDir': 'winddir', 'windSpeed': 'windspeedmph', 'windGust': 'windgustmph', 'UV': 'UV', 'rain': 'rainindelta', 'radiation': 'solarradiation' }
         else:
-            wu_sensors = { 'outTemp': 'tempc', 'outHumidity': 'humidity', 'inTemp': 'indoortempc', 'inHumidity': 'indoorhumidity', 'pressure': 'absbaromin', 'windDir': 'winddir', 'windSpeed': 'windspeedmps', 'windGust': 'windgustmps', 'UV': 'UV', 'rain': 'rainmm', 'radiation': 'solarradiation' }
+            wu_sensors = { 'outTemp': 'tempc', 'outHumidity': 'humidity', 'inTemp': 'indoortempc', 'inHumidity': 'indoorhumidity', 'pressure': 'absbaromin', 'windDir': 'winddir', 'windSpeed': 'windspeedmps', 'windGust': 'windgustmps', 'UV': 'UV', 'rain': 'rainmmdelta', 'radiation': 'solarradiation' }
             print "\n***** ALERT!  weewx.METRIC and weewx.METRICWX station units will require manually *****"
             print "***** editing the sensor_map after this process completes.  Building a bogus map. *****\n"
 
@@ -201,6 +201,24 @@ class AtmocomUDPDriver(weewx.drivers.AbstractDevice):
             for i in obs_keys:
                 obs_item = i + "." + obs_label
                 packet[obs_item] = obs[i]
+
+            # Calculate rain differences, since WU protocol does not include rain since last packet
+            for rain_item in self.raintype:
+                rain_key = rain_item + "." + obs_label
+                if rain_key in packet:
+                    delta_key = rain_item + 'delta' + "." + obs_label
+                    if rain_key not in self.lastrain:
+                        self.lastrain[rain_key] = packet[rain_key]
+                        packet[delta_key] = '0.00'
+                    else:
+                        if float(self.lastrain[rain_key]) > float(packet[rain_key]):
+                            # Start over from zero if station value wraps around or resets
+                            self.lastrain[rain_key] = packet[rain_key]
+                            packet[delta_key] = packet[rain_key]
+                        else:
+                            packet[delta_key] = str(float(packet[rain_key]) - float(self.lastrain[rain_key]))
+                        self.lastrain[rain_key] = packet[rain_key]
+
             return packet
 
         else:
@@ -237,7 +255,9 @@ class AtmocomUDPDriver(weewx.drivers.AbstractDevice):
         else:
             loginf('sensor map is %s' % self._sensor_map)
             loginf('*** Sensor names per packet type')
-
+        self.raintype = ( 'rainin', 'dailyrainin', 'weeklyrainin', 'monthlyrainin', 'yearlyrainin' )
+        self.lastrain = { }
+ 
     def hardware_name(self):
         return HARDWARE_NAME
 
